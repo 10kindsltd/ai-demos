@@ -1,0 +1,57 @@
+set dotenv-load := true
+
+aws_profile := env_var_or_default("AWS_PROFILE", "default")
+stack_name := env_var_or_default("STACK_NAME", "demo-insurance-parser")
+region := env_var_or_default("AWS_REGION", "eu-west-2")
+mantle_endpoint := "bedrock-mantle.eu-west-2.api.aws"
+
+# Log in with SSO before deploying
+login:
+    aws sso login --profile {{aws_profile}}
+
+build:
+    sam build
+    just lint
+
+lint: 
+    sam validate --lint
+
+plan:
+    sam deploy \
+    --no-execute-changeset \
+    --resolve-s3 \
+    --capabilities CAPABILITY_IAM \
+    --region {{region}} \
+    --stack-name {{stack_name}} \
+    --profile {{aws_profile}} \
+    --parameter-overrides \
+        BedrockApiKey=$BEDROCK_API_KEY
+
+deploy: build
+    sam deploy \
+    --resolve-s3 \
+    --capabilities CAPABILITY_IAM \
+    --region {{region}} \
+    --stack-name {{stack_name}} \
+    --profile {{aws_profile}} \
+    --parameter-overrides \
+        BedrockApiKey=$BEDROCK_API_KEY
+
+[confirm("This will destroy all resources in stack. Are you sure?")]
+destroy:
+    aws s3 rm s3://$(aws cloudformation describe-stacks \
+        --stack-name {{stack_name}} \
+        --region {{region}} \
+        --profile {{aws_profile}} \
+        --query "Stacks[0].Outputs[?OutputKey=='BucketName'].OutputValue" \
+        --output text) --recursive --profile {{aws_profile}}
+    sam delete \
+        --stack-name {{stack_name}} \
+        --region {{region}} \
+        --profile {{aws_profile}} \
+        --no-prompts
+
+# List available FM models
+list-models:
+    curl -X GET https://{{mantle_endpoint}}/v1/models \
+        -H "Authorization: Bearer $BEDROCK_API_KEY"
