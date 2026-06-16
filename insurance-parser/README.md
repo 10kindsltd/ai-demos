@@ -27,9 +27,10 @@ Drop PDFs into your bucket under `clients/{client-id}/quotes/`:
 BUCKET=your-bucket-name
 
 # Upload quotes one at a time — HTML updates after each
-aws s3 cp aldgate.pdf s3://$BUCKET/clients/brindle-hart/quotes/aldgate.pdf
-aws s3 cp pennine.pdf s3://$BUCKET/clients/brindle-hart/quotes/pennine.pdf
-aws s3 cp vantage.pdf s3://$BUCKET/clients/brindle-hart/quotes/vantage.pdf
+cd demo-data
+aws s3 cp Quote_A_Aldgate.pdf s3://$BUCKET/clients/brindle-hart/quotes/
+aws s3 cp Quote_B_Pennine.pdf s3://$BUCKET/clients/brindle-hart/quotes/
+aws s3 cp Quote_C_Vantage.pdf s3://$BUCKET/clients/brindle-hart/quotes/
 
 # Download and open the comparison
 aws s3 cp s3://$BUCKET/clients/brindle-hart/comparison.html ./comparison.html
@@ -43,9 +44,6 @@ quote-pipeline-{account-id}/
   clients/
     brindle-hart/
       quotes/          ← drop PDFs here
-        aldgate.pdf
-        pennine.pdf
-        vantage.pdf
       extracted/       ← written by Lambda (JSON per quote)
         aldgate.json
         pennine.json
@@ -75,6 +73,6 @@ Example `events/test_event.json`:
 ## Tuning
 
 - **Confidence threshold**: change `CONFIDENCE_THRESHOLD` in `handler.py` and `renderer.py`
-- **Synonym mapping**: extend the table in `prompt.py` → `SYSTEM_PROMPT`
+- --**Synonym mapping**: extend the table in `prompt.py` → `SYSTEM_PROMPT`--
 - **Flag rules**: add paths to `FLAG_LOWER` / `FLAG_HIGHER` in `renderer.py`
 - **Model**: change `MODEL_ID` in `handler.py`
