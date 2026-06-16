@@ -3,7 +3,6 @@ set dotenv-load := true
 aws_profile := env_var_or_default("AWS_PROFILE", "default")
 stack_name := env_var_or_default("STACK_NAME", "demo-insurance-parser")
 region := env_var_or_default("AWS_REGION", "eu-west-2")
-mantle_endpoint := "bedrock-mantle.eu-west-2.api.aws"
 
 # Log in with SSO before deploying
 login:
@@ -25,7 +24,7 @@ plan:
     --stack-name {{stack_name}} \
     --profile {{aws_profile}} \
     --parameter-overrides \
-        BedrockApiKey=$BEDROCK_API_KEY
+        GeminiApiKey=$GEMINI_API_KEY
 
 deploy: build
     sam deploy \
@@ -35,7 +34,7 @@ deploy: build
     --stack-name {{stack_name}} \
     --profile {{aws_profile}} \
     --parameter-overrides \
-        BedrockApiKey=$BEDROCK_API_KEY
+        GeminiApiKey=$GEMINI_API_KEY
 
 [confirm("This will destroy all resources in stack. Are you sure?")]
 destroy:
@@ -51,7 +50,3 @@ destroy:
         --profile {{aws_profile}} \
         --no-prompts
 
-# List available FM models
-list-models:
-    curl -X GET https://{{mantle_endpoint}}/v1/models \
-        -H "Authorization: Bearer $BEDROCK_API_KEY"

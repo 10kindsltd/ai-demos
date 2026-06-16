@@ -1,2 +1,2 @@
-anthropic[bedrock]
+google-genai
 pydantic

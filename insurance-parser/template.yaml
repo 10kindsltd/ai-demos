@@ -3,14 +3,10 @@ Transform: AWS::Serverless-2016-10-31
 Description: Insurance quote comparison pipeline
 
 Parameters:
-  BedrockRegion:
-    Type: String
-    Default: eu-west-2
-    Description: AWS region for the bedrock-mantle endpoint
-  BedrockApiKey:
+  GeminiApiKey:
     Type: String
     NoEcho: true
-    Description: Bedrock API key for the bedrock-mantle endpoint
+    Description: Gemini API key
 
 Globals:
   Function:
@@ -20,8 +16,7 @@ Globals:
     Environment:
       Variables:
         BUCKET_NAME: !Sub "demo-insurance-parser-${AWS::AccountId}-${AWS::Region}"
-        BEDROCK_REGION: !Ref BedrockRegion
-        AWS_BEARER_TOKEN_BEDROCK: !Ref BedrockApiKey
+        GEMINI_API_KEY: !Ref GeminiApiKey
 
 Resources:
 
@@ -38,12 +33,6 @@ Resources:
       Policies:
         - S3FullAccessPolicy:
             BucketName: !Sub "demo-insurance-parser-${AWS::AccountId}-${AWS::Region}"
-        - Statement:
-            - Effect: Allow
-              Action:
-                - bedrock:InvokeModel
-                - bedrock:GetFoundationModel
-              Resource: "*"
       Events:
         QuotePdfUploaded:
           Type: S3

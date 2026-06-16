@@ -5,7 +5,44 @@ Pure deterministic Python — no LLM involved here.
 
 from __future__ import annotations
 
+import html
+from datetime import datetime
+
 CONFIDENCE_THRESHOLD = 0.5
+
+# Field-path substrings whose values should render as GBP currency
+CURRENCY_HINTS = ["sum_insured", "limit", "gross", "net", "ipt", "money", "transit", "excess"]
+
+# Field-path substrings that hold dates
+DATE_HINTS = ["date", "valid_until", "period_start", "period_end"]
+
+# Date formats the model might emit, normalised to YYYY-MM-DD
+_DATE_FORMATS = ["%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d", "%d %B %Y", "%d %b %Y"]
+
+
+def _normalise_date(s: str) -> str:
+    """Parse a date string into YYYY-MM-DD; return unchanged if not a recognised date."""
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.strptime(s.strip(), fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return s  # e.g. "14 days from issue"
+
+
+def _as_number(v) -> float | None:
+    """Coerce a value to a number, stripping currency symbols and separators."""
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, (int, float)):
+        return v
+    if isinstance(v, str):
+        cleaned = v.replace(",", "").replace("£", "").replace("$", "").strip()
+        try:
+            return float(cleaned)
+        except ValueError:
+            return None
+    return None
 
 # Fields to show in the comparison grid, in display order
 # (label, dot-path into extraction dict)
@@ -77,14 +114,16 @@ def fmt_value(field_path: str, ev: dict | None) -> str:
         return ", ".join(str(x) for x in v) if v else "—"
     if isinstance(v, bool):
         return "Yes" if v else "No"
-    if isinstance(v, (int, float)):
-        if any(x in field_path for x in ["sum_insured", "limit", "gross", "net", "ipt", "money", "transit"]):
-            return f"£{v:,.0f}"
-        if "months" in field_path:
-            return f"{v} months"
-        if "rate" in field_path:
-            return f"{v}%"
-        return str(v)
+    if any(x in field_path for x in DATE_HINTS):
+        return _normalise_date(str(v))
+    if "rate" in field_path:
+        return f"{v}%"
+    if "months" in field_path:
+        return f"{v} months"
+    if any(x in field_path for x in CURRENCY_HINTS):
+        num = _as_number(v)
+        if num is not None:
+            return f"£{num:,.0f}"
     return str(v)
 
 
@@ -224,7 +263,9 @@ def render_html(quotes: list[dict], client_id: str) -> str:
             title = ""
             if low_conf:
                 css += " low-confidence"
-                title = f' title="Low confidence: {ev.get(\"confidence\", 0):.2f} — review recommended. Raw: {ev.get(\"raw_text\", \"\")}"'
+                conf = ev.get("confidence", 0)
+                raw = html.escape(str(ev.get("raw_text", "") or ""), quote=True)
+                title = f' title="Low confidence: {conf:.2f} — review recommended. Raw: {raw}"'
             elif not_found:
                 css += " not-found"
 
@@ -242,8 +283,8 @@ def render_html(quotes: list[dict], client_id: str) -> str:
 
     # Headers
     header_cells = '<th class="row-label">Field</th>'
-    for name in insurer_names:
-        ev = get_nested(quotes_sorted[insurer_names.index(name)], "premium.gross")
+    for i, name in enumerate(insurer_names):
+        ev = get_nested(quotes_sorted[i], "premium.gross")
         gross_display = fmt_value("premium.gross", ev)
         header_cells += f'<th><div class="insurer-name">{name}</div><div class="insurer-premium">{gross_display}</div></th>'
 

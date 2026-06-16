@@ -8,15 +8,13 @@ Drops insurance quote PDFs into S3 → extracts structured data via Claude → r
 - SAM CLI (`brew install aws-sam-cli`)
 - Python 3.12
 - An existing S3 bucket
-- Bedrock model access enabled in `eu-west-2`
 
-## Deploy
+## Deploy/Destroy
 
 ```bash
-sam build
-sam deploy \
-  --parameter-overrides \
-    BedrockApiKey=your-bedrock-api-key
+just login
+just deploy
+just destroy
 ```
 
 After deploying, configure an S3 event notification on your bucket to invoke the `ExtractorFunction` ARN (shown in stack outputs) on `s3:ObjectCreated:*` events with prefix `clients/` and suffix `.pdf`.

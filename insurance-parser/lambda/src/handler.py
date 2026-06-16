@@ -1,18 +1,18 @@
-import base64
 import json
 import os
 import urllib.parse
 
 import boto3
-from anthropic import AnthropicBedrockMantle
+from google import genai
+from google.genai import types
 from prompt import SYSTEM_PROMPT, USER_PROMPT
 from schema import QuoteExtraction
 
 s3 = boto3.client("s3")
-bedrock = AnthropicBedrockMantle(aws_region=os.environ["BEDROCK_REGION"])
+gemini = genai.Client()
 
 BUCKET = os.environ["BUCKET_NAME"]
-MODEL_ID = "anthropic.claude-haiku-4-5-20251001-v1:0"
+MODEL_ID = "gemini-3.1-flash-lite"
 CONFIDENCE_THRESHOLD = 0.5
 
 
@@ -33,31 +33,21 @@ def lambda_handler(event, context):
     quote_name = filename.replace(".pdf", "")
 
     pdf_bytes = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
-    pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
 
-    response = bedrock.messages.create(
+    response = gemini.models.generate_content(
         model=MODEL_ID,
-        max_tokens=4096,
-        system=SYSTEM_PROMPT,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "document",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "application/pdf",
-                            "data": pdf_b64,
-                        },
-                    },
-                    {"type": "text", "text": USER_PROMPT},
-                ],
-            }
+        contents=[
+            types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
+            USER_PROMPT,
         ],
+        config={
+            "system_instruction": SYSTEM_PROMPT,
+            "response_mime_type": "application/json",
+            "response_json_schema": QuoteExtraction.model_json_schema(),
+        },
     )
 
-    extracted_dict = json.loads(response.content[0].text)
+    extracted_dict = json.loads(response.text)
 
     quote = QuoteExtraction(**extracted_dict)
 

@@ -4,7 +4,7 @@ from typing import Optional
 
 class ExtractedValue(BaseModel):
     """Wraps every extracted field with a confidence score and the raw text from the doc."""
-    value: Optional[float | int | str | bool | list] = None
+    value: Optional[float | int | str | bool | list[str]] = None
     confidence: float = Field(ge=0.0, le=1.0)
     raw_text: Optional[str] = None  # what the doc actually said before normalisation
 
