@@ -1,0 +1,42 @@
+{
+  "skill_name": "content-style-review",
+  "evals": [
+    {
+      "id": 1,
+      "name": "warden-blog-post-planted-violations",
+      "prompt": "Run a content style review on evals/fixtures/blog-post-bad.md. This is Warden Security copy — the project has Warden's brand and localization guides under clients/warden/.",
+      "files": ["evals/fixtures/blog-post-bad.md"],
+      "expected_output": "A markdown findings table catching the planted grammar, voice/tone, and terminology violations listed in blog-post-bad.answerkey.md, each with a category and a citation to the Warden brand guidelines. See answerkey.md for the full list.",
+      "assertions": [
+        {"id": "recall-warning-headline", "text": "Output flags the all-caps 'WARNING...RIGHT NOW' headline as a voice/tone issue"},
+        {"id": "recall-nextgen-ai", "text": "Output flags 'next-gen quantum-grade AI' as a banned/unapproved terminology issue"},
+        {"id": "recall-annihilated", "text": "Output flags 'annihilated' as a banned term, category Terminology"},
+        {"id": "recall-its-contraction", "text": "Output flags 'its too late' as a grammar error (its -> it's)"},
+        {"id": "recall-youre-possessive", "text": "Output flags 'you're device' as a grammar error (you're -> your)"},
+        {"id": "recall-fake-urgency", "text": "Output flags 'Act now' as fake urgency, category Voice/tone"},
+        {"id": "recall-sweeps", "text": "Output flags 'sweeps your system' as a banned term (should be 'scan')"},
+        {"id": "recall-100-percent", "text": "Output flags 'guarantees 100% protection' as a banned absolute claim"},
+        {"id": "recall-cyber-monsters", "text": "Output flags 'cyber-monsters' as a banned term"},
+        {"id": "recall-lowercase-warden", "text": "Output flags lowercase 'warden' in 'The warden team' as a capitalization issue"},
+        {"id": "recall-empty-reassurance", "text": "Output flags 'take your security very seriously and are actively monitoring' as an empty-reassurance phrase per the brand guide's explicit example"},
+        {"id": "recall-bulletproof-unhackable", "text": "Output flags 'bulletproof' and/or 'unhackable' as banned absolute-claim terms"},
+        {"id": "recall-then-than", "text": "Output flags 'easier to use then ever' as a grammar error (then -> than)"},
+        {"id": "precision-no-numeral-false-positive", "text": "Output does NOT flag '3 customer laptops' as a numeral-formatting error"},
+        {"id": "structure-table-present", "text": "Output is structured as a markdown table with columns for location/quote, issue, category, suggested fix, and reference"},
+        {"id": "citation-present", "text": "Terminology and voice/tone findings cite the Warden brand guidelines (not left as 'Standard grammar')"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "warden-blog-post-clean-false-positive-control",
+      "prompt": "Run a content style review on evals/fixtures/blog-post-clean.md. This is Warden Security copy — the project has Warden's brand and localization guides under clients/warden/.",
+      "files": ["evals/fixtures/blog-post-clean.md"],
+      "expected_output": "A near-empty or empty findings table, since this text is already grammatically correct and on-brand. The skill should say so rather than manufacturing findings.",
+      "assertions": [
+        {"id": "precision-mostly-empty", "text": "Output findings table has zero or at most 1 minor finding"},
+        {"id": "precision-no-fabricated-banned-terms", "text": "Output does not claim any banned term appears in the text (none are present)"},
+        {"id": "precision-no-fabricated-grammar", "text": "Output does not invent a grammar error (the text has none)"}
+      ]
+    }
+  ]
+}

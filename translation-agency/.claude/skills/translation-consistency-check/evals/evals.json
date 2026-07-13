@@ -1,0 +1,46 @@
+{
+  "skill_name": "translation-consistency-check",
+  "evals": [
+    {
+      "id": 1,
+      "name": "warden-drift-fr-de",
+      "prompt": "Run a translation consistency check comparing evals/fixtures/warden-drift/source-en.md against the fr-FR and de-DE translations in the same folder. This is Warden Security content — the project has Warden's brand and localization guides under clients/warden/.",
+      "files": [
+        "evals/fixtures/warden-drift/source-en.md",
+        "evals/fixtures/warden-drift/fr-FR.md",
+        "evals/fixtures/warden-drift/de-DE.md"
+      ],
+      "expected_output": "Two separate reports: per-translation compliance (fr-FR has 3 findings, de-DE is clean) and cross-translation drift (4 findings: CPU stat mismatch, missing de-DE paragraph, fr-FR formality switch, fr-FR internal term inconsistency). See answerkey.md for full detail.",
+      "assertions": [
+        {"id": "recall-fr-term-drift-instantanee", "text": "Report 1 (fr-FR) flags 'protection instantanée' as inconsistent with the approved 'protection en temps réel'"},
+        {"id": "recall-fr-dashboard-anglicism", "text": "Report 1 (fr-FR) flags 'tableau de bord' — per the fr-FR locale note, 'Dashboard' should stay in English in tech contexts"},
+        {"id": "recall-fr-formality-slip", "text": "Report 1 (fr-FR) flags 'tu verras' as a formality/register violation (fr-FR defaults to vous)"},
+        {"id": "precision-de-clean", "text": "Report 1 (de-DE) has zero or at most 1 minor finding — the translation is compliant"},
+        {"id": "recall-cpu-number-drift", "text": "Report 2 flags the CPU impact statistic mismatch (source says under 2%, fr-FR says 5%) and names fr-FR as the affected locale"},
+        {"id": "recall-missing-paragraph-de", "text": "Report 2 flags the missing closing paragraph in de-DE as structural drift, naming de-DE as the affected locale"},
+        {"id": "recall-formality-drift-cross", "text": "Report 2 flags the fr-FR internal formality inconsistency (vous vs. tu) as register drift"},
+        {"id": "recall-term-drift-cross", "text": "Report 2 flags the 'real-time protection' term inconsistency within fr-FR, and contrasts it with de-DE's consistent 'Echtzeitschutz'"},
+        {"id": "structure-two-separate-reports", "text": "Output contains two clearly separate, labeled reports/tables (compliance and drift), not one merged table"},
+        {"id": "structure-locale-naming", "text": "Every Report 2 finding names which specific locale(s) are affected"},
+        {"id": "severity-cpu-number-highlighted", "text": "The summary or findings explicitly call out the CPU number mismatch as a high-severity / claims-discipline issue, not just a minor style note"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "warden-clean-false-positive-control",
+      "prompt": "Run a translation consistency check comparing evals/fixtures/warden-clean/source-en.md against the fr-FR and de-DE translations in the same folder. This is Warden Security content — the project has Warden's brand and localization guides under clients/warden/.",
+      "files": [
+        "evals/fixtures/warden-clean/source-en.md",
+        "evals/fixtures/warden-clean/fr-FR.md",
+        "evals/fixtures/warden-clean/de-DE.md"
+      ],
+      "expected_output": "Both reports come back empty or near-empty — terminology, register, numeric claims (none present), and structure are all consistent across languages.",
+      "assertions": [
+        {"id": "precision-report1-clean", "text": "Report 1 has zero or at most 1 minor finding across both locales"},
+        {"id": "precision-report2-clean", "text": "Report 2 has zero or at most 1 minor finding"},
+        {"id": "precision-no-fabricated-term-drift", "text": "Output does not claim a terminology inconsistency exists (fr-FR and de-DE both use their approved, consistent terms)"},
+        {"id": "structure-still-two-reports", "text": "Output still presents two separate reports even though both are empty/near-empty, rather than collapsing into one"}
+      ]
+    }
+  ]
+}

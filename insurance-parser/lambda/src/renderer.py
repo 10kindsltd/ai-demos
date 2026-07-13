@@ -136,7 +136,8 @@ def detect_flags(quotes: list[dict]) -> list[str]:
     # Sort by gross premium ascending (cheapest first)
     def gross(q):
         ev = get_nested(q, "premium.gross")
-        return ev["value"] if ev and ev.get("value") is not None else float("inf")
+        num = _as_number(ev["value"]) if ev and ev.get("value") is not None else None
+        return num if num is not None else float("inf")
 
     sorted_quotes = sorted(quotes, key=gross)
     cheapest = sorted_quotes[0]
@@ -232,7 +233,8 @@ def render_html(quotes: list[dict], client_id: str) -> str:
     # Sort cheapest first
     def gross(q):
         ev = get_nested(q, "premium.gross")
-        return ev["value"] if ev and ev.get("value") is not None else float("inf")
+        num = _as_number(ev["value"]) if ev and ev.get("value") is not None else None
+        return num if num is not None else float("inf")
 
     quotes_sorted = sorted(quotes, key=gross)
 
@@ -304,10 +306,10 @@ def render_html(quotes: list[dict], client_id: str) -> str:
         """
 
     waiting_html = ""
-    if len(quotes_sorted) == 1:
-        waiting_html = '<div class="waiting">⏳ Waiting for more quotes — comparison will update automatically as they arrive.</div>'
-    elif len(quotes_sorted) == 2:
-        waiting_html = '<div class="waiting">⏳ 2 of 3 quotes received — comparison will update when the third arrives.</div>'
+    # if len(quotes_sorted) == 1:
+    #     waiting_html = '<div class="waiting">⏳ Waiting for more quotes — comparison will update automatically as they arrive.</div>'
+    # elif len(quotes_sorted) == 2:
+    #     waiting_html = '<div class="waiting">⏳ 2 of 3 quotes received — comparison will update when the third arrives.</div>'
 
     insured_ev = get_nested(quotes_sorted[0], "insured_name") if quotes_sorted else None
     insured_name = insured_ev["value"] if insured_ev and insured_ev.get("value") else client_id
@@ -345,7 +347,7 @@ def render_html(quotes: list[dict], client_id: str) -> str:
   tr:hover td.row-label {{ background: #e8edf8; }}
   .flag-low {{ background: #fff3cd !important; font-weight: 600; color: #856404; }}
   .flag-high {{ background: #fde8e8 !important; font-weight: 600; color: #842029; }}
-  .low-confidence {{ border-bottom: 2px dashed #f9a825; cursor: help; }}
+  .low-confidence {{ /*border-bottom: 2px dashed #f9a825; cursor: help;*/ }}
   .not-found {{ color: #bbb; }}
   .legend {{ margin-top: 20px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.8rem; color: #666; }}
   .legend-item {{ display: flex; align-items: center; gap: 6px; }}
