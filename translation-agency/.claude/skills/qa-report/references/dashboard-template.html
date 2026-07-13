@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Localization QA</title>
+</head>
+<body>
+<!--
+  Localization QA dashboard — self-contained template.
+
+  HOW THE qa-report SKILL USES THIS FILE:
+  Replace the JSON inside <script id="qa-data"> with the real run data, then save the
+  whole file (self-contained, no external assets) into the client's project and open it
+  in a browser. To publish a shareable claude.ai link instead, hand the same content to
+  the Artifact tool (the Artifact wrapper supplies <!doctype>/<head>/<body>, so pass
+  only the <style>…</style> + page markup + <script>…</script>, not this outer shell).
+
+  DATA SCHEMA (see the sample below for a filled-in example):
+    client   : string   — discovered client name
+    source   : string   — source document title/name
+    phase    : "pre-translation" | "post-translation"
+    date     : "YYYY-MM-DD"
+    locales  : string[] — locale codes reviewed (heatmap columns). Empty for a
+                          single-document pre-translation check.
+    verdict  : "pass" | "warn" | "fail" — overall, your judgment
+    findings : array of:
+       locale    : locale code, or "source" for pre-translation findings
+       category  : one of Grammar | Voice/tone | Terminology | Register/formality |
+                   Numeric/claim | Structural  (unknown values are appended as new rows)
+       severity  : "high" | "medium" | "low"
+       report    : "compliance" | "drift"  — which report it came from
+       quote     : short exact quote so the reader can locate it
+       issue     : what's wrong
+       fix       : suggested correction
+       reference : guide + section that justifies it, or "Standard grammar"
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --ink: #1a1c1f;
+    --ink-soft: #5b6270;
+    --line: #e4e7ec;
+    --accent: #2f6df6;
+    --sev-none-bg: #eef1f5; --sev-none-ink: #8a92a0;
+    --sev-low-bg: #fff2c9;  --sev-low-ink: #7a5a00;
+    --sev-med-bg: #ffd6a8;  --sev-med-ink: #8a4500;
+    --sev-high-bg: #ffc4c2; --sev-high-ink: #8a1512;
+    --pass: #1a7f4b; --warn: #b06a00; --fail: #c0322c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --card: #1d2026; --ink: #e9ecf1; --ink-soft: #9aa2b1;
+      --line: #2c313a; --accent: #6f9bff;
+      --sev-none-bg: #242832; --sev-none-ink: #757d8c;
+      --sev-low-bg: #4a3d12;  --sev-low-ink: #f0d78a;
+      --sev-med-bg: #5a3410;  --sev-med-ink: #ffc48f;
+      --sev-high-bg: #55201e; --sev-high-ink: #ff9d99;
+      --pass: #4ecb86; --warn: #e2a54a; --fail: #f0736c;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:#f6f7f9; --card:#fff; --ink:#1a1c1f; --ink-soft:#5b6270; --line:#e4e7ec; --accent:#2f6df6;
+    --sev-none-bg:#eef1f5; --sev-none-ink:#8a92a0; --sev-low-bg:#fff2c9; --sev-low-ink:#7a5a00;
+    --sev-med-bg:#ffd6a8; --sev-med-ink:#8a4500; --sev-high-bg:#ffc4c2; --sev-high-ink:#8a1512;
+    --pass:#1a7f4b; --warn:#b06a00; --fail:#c0322c;
+  }
+  :root[data-theme="dark"] {
+    --bg:#14161a; --card:#1d2026; --ink:#e9ecf1; --ink-soft:#9aa2b1; --line:#2c313a; --accent:#6f9bff;
+    --sev-none-bg:#242832; --sev-none-ink:#757d8c; --sev-low-bg:#4a3d12; --sev-low-ink:#f0d78a;
+    --sev-med-bg:#5a3410; --sev-med-ink:#ffc48f; --sev-high-bg:#55201e; --sev-high-ink:#ff9d99;
+    --pass:#4ecb86; --warn:#e2a54a; --fail:#f0736c;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); margin: 32px 0 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+
+  /* header */
+  .head { padding: 20px 22px; display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center; justify-content: space-between; }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px 24px; color: var(--ink-soft); font-size: 13.5px; }
+  .meta b { color: var(--ink); font-weight: 600; }
+  .verdict { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 8px 14px; border-radius: 999px; border: 1.5px solid; }
+  .verdict.pass { color: var(--pass); border-color: var(--pass); }
+  .verdict.warn { color: var(--warn); border-color: var(--warn); }
+  .verdict.fail { color: var(--fail); border-color: var(--fail); }
+
+  /* heatmap */
+  .scroll { overflow-x: auto; }
+  table.heat { border-collapse: separate; border-spacing: 4px; width: 100%; }
+  table.heat th { font-size: 12.5px; color: var(--ink-soft); font-weight: 600; text-align: center; padding: 4px 6px; white-space: nowrap; }
+  table.heat th.row { text-align: left; }
+  .cell { border-radius: 7px; text-align: center; padding: 10px 8px; font-weight: 700; font-size: 14px; cursor: pointer; min-width: 66px; }
+  .cell small { display: block; font-weight: 500; font-size: 10.5px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
+  .cell.none { background: var(--sev-none-bg); color: var(--sev-none-ink); cursor: default; }
+  .cell.low  { background: var(--sev-low-bg);  color: var(--sev-low-ink); }
+  .cell.medium { background: var(--sev-med-bg); color: var(--sev-med-ink); }
+  .cell.high { background: var(--sev-high-bg); color: var(--sev-high-ink); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 12px; color: var(--ink-soft); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
+
+  /* filters */
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 14px; }
+  .chip { font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink-soft); cursor: pointer; }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .search { flex: 1 1 180px; min-width: 160px; font: inherit; font-size: 13.5px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+
+  /* findings */
+  .finding { padding: 14px 16px; border: 1px solid var(--line); border-left-width: 4px; border-radius: 10px; margin-bottom: 10px; background: var(--card); }
+  .finding.high { border-left-color: var(--sev-high-ink); }
+  .finding.medium { border-left-color: var(--sev-med-ink); }
+  .finding.low { border-left-color: var(--sev-low-ink); }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .tag { font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; padding: 3px 8px; border-radius: 5px; background: var(--sev-none-bg); color: var(--ink-soft); }
+  .tag.sev.high { background: var(--sev-high-bg); color: var(--sev-high-ink); }
+  .tag.sev.medium { background: var(--sev-med-bg); color: var(--sev-med-ink); }
+  .tag.sev.low { background: var(--sev-low-bg); color: var(--sev-low-ink); }
+  .quote { font-style: italic; color: var(--ink); border-left: 2px solid var(--line); padding-left: 10px; margin: 2px 0 8px; }
+  .finding .issue { margin: 0 0 6px; }
+  .finding .fix { margin: 0; color: var(--ink-soft); font-size: 13.5px; }
+  .finding .fix b { color: var(--ink); font-weight: 600; }
+  .finding .ref { margin: 8px 0 0; font-size: 12px; color: var(--ink-soft); }
+  .empty { color: var(--ink-soft); padding: 20px; text-align: center; }
+  footer { margin-top: 40px; font-size: 12px; color: var(--ink-soft); text-align: center; }
+</style>
+
+<div class="wrap">
+  <div class="card head">
+    <div>
+      <h1 id="title">Localization QA</h1>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div class="verdict" id="verdict"></div>
+  </div>
+
+  <h2>Severity by category &amp; locale</h2>
+  <div class="card" style="padding:16px 18px;">
+    <div class="scroll"><table class="heat" id="heat"></table></div>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--sev-none-bg)"></i> none</span>
+      <span><i class="swatch" style="background:var(--sev-low-bg)"></i> low</span>
+      <span><i class="swatch" style="background:var(--sev-med-bg)"></i> medium</span>
+      <span><i class="swatch" style="background:var(--sev-high-bg)"></i> high</span>
+      <span style="margin-left:auto">click a cell to filter findings</span>
+    </div>
+  </div>
+
+  <h2>Findings <span id="count" style="text-transform:none;letter-spacing:0"></span></h2>
+  <div class="filters" id="filters"></div>
+  <div id="findings"></div>
+
+  <footer>Generated by the qa-report skill · Localization QA Toolkit</footer>
+</div>
+
+<script id="qa-data" type="application/json">
+{
+  "client": "Warden Security",
+  "source": "How real-time protection works",
+  "phase": "post-translation",
+  "date": "2026-07-13",
+  "locales": ["fr-FR", "de-DE"],
+  "verdict": "fail",
+  "findings": [
+    {
+      "locale": "fr-FR", "category": "Numeric/claim", "severity": "high", "report": "drift",
+      "quote": "impact CPU moyen de moins de 5 %",
+      "issue": "The CPU impact figure was changed. The source says under 2%; the French says under 5%.",
+      "fix": "Restore the exact source figure — under 2% (moins de 2 %).",
+      "reference": "Localization guide §2.3 & §6 — preserve exact numeric claims; brand claims discipline"
+    },
+    {
+      "locale": "fr-FR", "category": "Terminology", "severity": "medium", "report": "drift",
+      "quote": "La protection instantanée",
+      "issue": "The body uses 'protection instantanée' while the heading uses 'protection en temps réel' for the same concept — internal inconsistency.",
+      "fix": "Use 'protection en temps réel' consistently, per the term table.",
+      "reference": "Localization guide §3 — Real-time protection → protection en temps réel"
+    },
+    {
+      "locale": "fr-FR", "category": "Register/formality", "severity": "high", "report": "compliance",
+      "quote": "tu verras une courte notification",
+      "issue": "Uses informal 'tu' where fr-FR defaults to 'vous' in product content — the same paragraph later uses 'votre'.",
+      "fix": "Use the vous form: 'vous verrez une courte notification'.",
+      "reference": "Localization guide §5 — fr-FR uses vous throughout product content"
+    },
+    {
+      "locale": "fr-FR", "category": "Terminology", "severity": "low", "report": "compliance",
+      "quote": "depuis le tableau de bord",
+      "issue": "'Dashboard' should stay in English in fr-FR tech contexts; 'tableau de bord' reads automotive.",
+      "fix": "Use 'Dashboard'.",
+      "reference": "Localization guide §3 & §5 — Dashboard stays EN in fr-FR tech contexts"
+    },
+    {
+      "locale": "de-DE", "category": "Structural", "severity": "medium", "report": "drift",
+      "quote": "(closing paragraph absent)",
+      "issue": "The source's closing 'no action needed' paragraph is missing from the German — possible work from an outdated source.",
+      "fix": "Add the missing closing paragraph.",
+      "reference": "Source document structure"
+    }
+  ]
+}
+</script>
+
+<script>
+  (function () {
+    const CANON = ["Grammar", "Voice/tone", "Terminology", "Register/formality", "Numeric/claim", "Structural"];
+    const SEV_RANK = { none: 0, low: 1, medium: 2, high: 3 };
+    const SEV_NAME = ["none", "low", "medium", "high"];
+    const data = JSON.parse(document.getElementById("qa-data").textContent);
+    const findings = data.findings || [];
+
+    // Header
+    document.getElementById("title").textContent = (data.client || "Localization") + " — QA report";
+    const phase = data.phase === "pre-translation" ? "Pre-translation" : "Post-translation";
+    document.getElementById("meta").innerHTML =
+      `<span><b>Source:</b> ${esc(data.source || "—")}</span>` +
+      `<span><b>Phase:</b> ${phase}</span>` +
+      (data.locales && data.locales.length ? `<span><b>Locales:</b> ${data.locales.map(esc).join(", ")}</span>` : "") +
+      `<span><b>Date:</b> ${esc(data.date || "")}</span>` +
+      `<span><b>Findings:</b> ${findings.length}</span>`;
+    const v = document.getElementById("verdict");
+    v.textContent = data.verdict || "review";
+    v.classList.add(data.verdict || "warn");
+
+    // Column set: explicit locales, else those present, else "source"
+    let cols = (data.locales && data.locales.length) ? data.locales.slice()
+             : [...new Set(findings.map(f => f.locale || "source"))];
+    if (!cols.length) cols = ["source"];
+    // Row set: canonical order + any extras that appear
+    const present = new Set(findings.map(f => f.category));
+    const rows = CANON.filter(c => present.has(c)).concat([...present].filter(c => !CANON.includes(c)));
+    const rowSet = rows.length ? rows : CANON;
+
+    // Heatmap
+    const heat = document.getElementById("heat");
+    let html = "<tr><th class='row'></th>" + cols.map(c => `<th>${esc(c)}</th>`).join("") + "</tr>";
+    for (const r of rowSet) {
+      html += `<tr><th class='row'>${esc(r)}</th>`;
+      for (const c of cols) {
+        const hits = findings.filter(f => f.category === r && (f.locale || "source") === c);
+        const worst = hits.reduce((m, f) => Math.max(m, SEV_RANK[f.severity] || 0), 0);
+        const name = SEV_NAME[worst];
+        const label = hits.length ? `${hits.length}<small>${name}</small>` : "";
+        const clickable = hits.length ? ` data-cat="${esc(r)}" data-loc="${esc(c)}"` : "";
+        html += `<td class="cell ${name}"${clickable}>${label}</td>`;
+      }
+      html += "</tr>";
+    }
+    heat.innerHTML = html;
+    heat.querySelectorAll(".cell[data-cat]").forEach(cell => {
+      cell.addEventListener("click", () => {
+        state.locale = cell.dataset.loc; state.category = cell.dataset.cat; state.report = "all"; state.q = "";
+        syncChips(); render();
+      });
+    });
+
+    // Filters
+    const state = { locale: "all", category: "all", report: "all", q: "" };
+    const filterBar = document.getElementById("filters");
+    const groups = [
+      ["locale", ["all", ...cols]],
+      ["report", ["all", "compliance", "drift"]]
+    ];
+    for (const [key, opts] of groups) {
+      for (const opt of opts) {
+        const b = document.createElement("button");
+        b.className = "chip" + (state[key] === opt ? " active" : "");
+        b.textContent = opt === "all" ? (key === "locale" ? "All locales" : "All reports") : opt;
+        b.dataset.key = key; b.dataset.val = opt;
+        b.addEventListener("click", () => { state[key] = opt; if (key === "locale") state.category = "all"; syncChips(); render(); });
+        filterBar.appendChild(b);
+      }
+    }
+    const search = document.createElement("input");
+    search.className = "search"; search.placeholder = "Search findings…";
+    search.addEventListener("input", () => { state.q = search.value.toLowerCase(); render(); });
+    filterBar.appendChild(search);
+
+    function syncChips() {
+      filterBar.querySelectorAll(".chip").forEach(c => {
+        c.classList.toggle("active", state[c.dataset.key] === c.dataset.val);
+      });
+    }
+
+    // Findings list
+    function render() {
+      const list = findings
+        .filter(f => state.locale === "all" || (f.locale || "source") === state.locale)
+        .filter(f => state.category === "all" || f.category === state.category)
+        .filter(f => state.report === "all" || f.report === state.report)
+        .filter(f => !state.q || JSON.stringify(f).toLowerCase().includes(state.q))
+        .sort((a, b) => (SEV_RANK[b.severity] || 0) - (SEV_RANK[a.severity] || 0));
+
+      document.getElementById("count").textContent = `· ${list.length} shown`;
+      const box = document.getElementById("findings");
+      if (!list.length) { box.innerHTML = `<div class="card empty">No findings match these filters.</div>`; return; }
+      box.innerHTML = list.map(f => `
+        <div class="finding ${f.severity}">
+          <div class="tags">
+            <span class="tag sev ${f.severity}">${f.severity}</span>
+            <span class="tag">${esc(f.locale || "source")}</span>
+            <span class="tag">${esc(f.category)}</span>
+            <span class="tag">${esc(f.report || "")}</span>
+          </div>
+          ${f.quote ? `<div class="quote">${esc(f.quote)}</div>` : ""}
+          <p class="issue">${esc(f.issue || "")}</p>
+          ${f.fix ? `<p class="fix"><b>Fix:</b> ${esc(f.fix)}</p>` : ""}
+          ${f.reference ? `<p class="ref">${esc(f.reference)}</p>` : ""}
+        </div>`).join("");
+    }
+
+    function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+    render();
+  })();
+</script>
+</body>
+</html>
