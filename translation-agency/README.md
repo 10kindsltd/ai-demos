@@ -99,6 +99,10 @@ HTML report with a headless browser (Chrome/Brave/Edge), so there's nothing extr
 install. Both land in `qa-output/` at the project root (git-ignored) — that's the only
 place this skill writes.
 
+**More demo content** — [`demo-samples/`](demo-samples/) has a marketing-email sample
+for the pre-check and a three-locale set (es-419, de-DE, fr-FR) for the post-check, each
+with an answer key of the planted issues in [`demo-samples/README.md`](demo-samples/README.md).
+
 ## Testing
 
 Both check skills ship eval suites with fixtures and answer keys under their `evals/`
