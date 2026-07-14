@@ -74,7 +74,7 @@ change.
 
 **Always write the file to `qa-output/` at the project root** (create the folder if it
 doesn't exist), named after the source document — e.g.
-`qa-output/<source-slug>-dashboard.html`. Every generated file this skill produces goes
+`qa-output/<ISO datetime stamp (e.g. YYYY-MM-dd HH:mm)>-<source-slug>-dashboard.html`. Every generated file this skill produces goes
 in `qa-output/` and nowhere else, so the deliverables stay in one predictable, git-ignored
 place. Open it in a browser to view; it's self-contained and works offline.
 
